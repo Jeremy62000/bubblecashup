@@ -1,24 +1,26 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Coins, Gem, Sparkles, Trophy, Volume2, VolumeX } from "lucide-react";
+import {
+  Coins,
+  Gem,
+  ShoppingBag,
+  Sparkles,
+  Trophy,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useMemo, type ReactNode } from "react";
+import { Link } from "react-router";
 import { BurstOverlay } from "@/components/burst-overlay";
 import { useBubbleGame } from "@/hooks/use-bubble-game";
 import * as engine from "@/lib/game-engine";
 import type { BubbleKind } from "@/lib/game-engine";
+import { skinById, TEMP_BOOSTERS, type TempBoosterId } from "@/lib/shop";
 
-// --- bubble skins (light glass, kid friendly) ------------------------------
-const BUBBLE_STYLES: Record<
-  BubbleKind,
+// --- special bubble skins (golden / rainbow keep their own look) ------------
+const SPECIAL_STYLES: Record<
+  Exclude<BubbleKind, "normal">,
   { label: string; background: string; accent: string; shadow: string; chip: string }
 > = {
-  normal: {
-    label: "Bulle",
-    background:
-      "radial-gradient(circle at 32% 26%, rgba(255,255,255,0.98) 0%, rgba(186,230,253,0.92) 30%, rgba(129,140,248,0.55) 68%, rgba(167,139,250,0.5) 100%)",
-    accent: "border-sky-200/80",
-    shadow: "0 18px 50px -12px rgba(79,70,229,0.45), inset 0 -12px 28px rgba(255,255,255,0.35)",
-    chip: "border-sky-200/70 bg-sky-100/60 text-sky-800",
-  },
   golden: {
     label: "Bulle d'or",
     background:
@@ -72,12 +74,59 @@ function Chip({
   );
 }
 
+function EffectChip({ children }: { children: ReactNode }) {
+  return (
+    <motion.span
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.8, opacity: 0 }}
+      className="flex items-center gap-1 rounded-full border border-white/70 bg-white/70 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 shadow-sm backdrop-blur-md"
+    >
+      {children}
+    </motion.span>
+  );
+}
+
 export default function Game() {
   const game = useBubbleGame();
-  const { save, kind, risk, value, size, status, comboStacks, burst, flash, lastGain } = game;
-  const style = BUBBLE_STYLES[kind];
+  const {
+    save,
+    kind,
+    risk,
+    value,
+    size,
+    status,
+    comboStacks,
+    burst,
+    flash,
+    lastGain,
+    effects,
+    offlineClaim,
+  } = game;
+  const skin = skinById(save.skin);
+  const style =
+    kind === "normal"
+      ? {
+          label: "Bulle",
+          background: skin.gradient,
+          accent: skin.border,
+          shadow:
+            "0 18px 50px -12px rgba(79,70,229,0.45), inset 0 -12px 28px rgba(255,255,255,0.35)",
+          chip: "border-white/70 bg-white/60 text-slate-700",
+        }
+      : SPECIAL_STYLES[kind];
   const multiplier = engine.comboMultiplierFor(comboStacks);
   const isBusy = status !== "inflating";
+
+  const now = Date.now();
+  const shieldLeft = effects.shield
+    ? Math.max(0, Math.ceil((effects.shield.until - now) / 1000))
+    : 0;
+  const freezeLeft = effects.freeze
+    ? Math.max(0, Math.ceil((effects.freeze.until - now) / 1000))
+    : 0;
+
+  const boostersInBag = TEMP_BOOSTERS.filter((b) => save.boosters[b.id] > 0);
 
   const decor = useMemo(
     () =>
@@ -105,7 +154,6 @@ export default function Game() {
     >
       {decor}
 
-      {/* soft light beams */}
       <div
         aria-hidden
         className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-sky-300/25 blur-3xl"
@@ -131,7 +179,7 @@ export default function Game() {
       <BurstOverlay burst={burst} onDone={game.clearBurst} />
 
       {/* ---------- header ---------- */}
-      <header className="relative z-10 flex flex-wrap items-center justify-between gap-2 px-3 pt-4 sm:px-4">
+      <header className="relative z-10 flex flex-wrap items-center justify-center gap-2 px-3 pt-4 sm:justify-between sm:px-4">
         <Chip
           icon={<Coins className="h-4 w-4 text-amber-500" />}
           label="Pièces"
@@ -147,22 +195,31 @@ export default function Game() {
           label="Record"
           value={engine.formatCoins(save.bestBubble)}
         />
-        <button
-          type="button"
-          onClick={game.toggleMute}
-          aria-label={save.muted ? "Activer le son" : "Couper le son"}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-slate-600 shadow-sm backdrop-blur-xl transition hover:bg-white/80 active:scale-95"
-        >
-          {save.muted ? (
-            <VolumeX className="h-4 w-4" />
-          ) : (
-            <Volume2 className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/shop"
+            aria-label="Boutique"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-indigo-500 shadow-sm backdrop-blur-xl transition hover:bg-white/80 active:scale-95"
+          >
+            <ShoppingBag className="h-4 w-4" />
+          </Link>
+          <button
+            type="button"
+            onClick={game.toggleMute}
+            aria-label={save.muted ? "Activer le son" : "Couper le son"}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-slate-600 shadow-sm backdrop-blur-xl transition hover:bg-white/80 active:scale-95"
+          >
+            {save.muted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* ---------- stage ---------- */}
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-3 px-4">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center gap-2.5 px-4">
         {/* combo */}
         <div className="h-7">
           <AnimatePresence>
@@ -175,14 +232,14 @@ export default function Game() {
                 className="flex items-center gap-1.5 rounded-full border border-amber-300/70 bg-amber-100/70 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm backdrop-blur-md"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Combo ×{multiplier.toFixed(1)} sur le prochain encaissement
+                Combo ×{multiplier.toFixed(1)} au prochain encaissement
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* bubble + kind chip */}
-        <div className="flex flex-col items-center gap-3">
+        {/* bubble + kind chip + active effects */}
+        <div className="flex flex-col items-center gap-2.5">
           <span
             className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide backdrop-blur-md ${style.chip}`}
           >
@@ -190,6 +247,27 @@ export default function Game() {
             {kind === "golden" && " · ×3"}
             {kind === "rainbow" && " · offres des cristaux"}
           </span>
+
+          {/* active temporary effects */}
+          <div className="flex h-6 items-center justify-center gap-1.5">
+            <AnimatePresence mode="popLayout">
+              {shieldLeft > 0 && (
+                <EffectChip key="shield">🛡️ bouclier {shieldLeft}s</EffectChip>
+              )}
+              {freezeLeft > 0 && (
+                <EffectChip key="freeze">🧊 gel {freezeLeft}s</EffectChip>
+              )}
+              {effects.cashMult === 2 && !isBusy && (
+                <EffectChip key="dbl">🪙 ×2 à l'encaissement</EffectChip>
+              )}
+              {effects.cashMult === 3 && !isBusy && (
+                <EffectChip key="tpl">🚀 ×3 à l'encaissement</EffectChip>
+              )}
+              {effects.lucky && !isBusy && (
+                <EffectChip key="lucky">🍀 prochaine bulle spéciale</EffectChip>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="relative flex h-[280px] w-full max-w-[300px] items-center justify-center sm:h-[320px] sm:max-w-[340px]">
             {/* floating gain */}
@@ -222,7 +300,7 @@ export default function Game() {
               >
                 <AnimatePresence mode="popLayout">
                   <motion.div
-                    key={status}
+                    key={status + skin.id}
                     initial={{ scale: status === "inflating" ? 0.6 : 1, opacity: 0.6 }}
                     animate={
                       status === "inflating"
@@ -233,7 +311,6 @@ export default function Game() {
                     className={`absolute inset-0 rounded-full border ${style.accent}`}
                     style={{ background: style.background, boxShadow: style.shadow }}
                   >
-                    {/* specular highlight */}
                     <span
                       aria-hidden
                       className="absolute left-[14%] top-[9%] h-[30%] w-[42%] -rotate-[24deg] rounded-full bg-white/80 blur-[3px]"
@@ -264,7 +341,7 @@ export default function Game() {
         <div className="flex items-baseline gap-2">
           <motion.span
             key={multiplier}
-            initial={{ scale: 1.25, color: "#b45309" }}
+            initial={{ scale: 1.2, color: "#b45309" }}
             animate={{ scale: 1, color: "#0f172a" }}
             className="text-4xl font-black tabular-nums"
           >
@@ -299,14 +376,48 @@ export default function Game() {
         </div>
 
         <p className="text-[11px] text-slate-500">
-          {risk >= 70
-            ? "⚠️ Très risqué… encaisse vite !"
-            : "Encaisser souvent = garder ses pièces plus longtemps !"}
+          {shieldLeft > 0
+            ? "🛡️ Ta bulle est protégée !"
+            : risk >= 70
+              ? "⚠️ Très risqué… encaisse vite !"
+              : "Encaisser souvent = garder ses pièces plus longtemps !"}
         </p>
       </main>
 
+      {/* ---------- booster tray (owned ones) ---------- */}
+      {boostersInBag.length > 0 && (
+        <div className="relative z-10 mx-auto flex w-full max-w-md items-center gap-1.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+          {TEMP_BOOSTERS.filter((b) => save.boosters[b.id] > 0).map((b) => {
+            const count = save.boosters[b.id];
+            const blocked =
+              isBusy ||
+              (b.kind === "shield" && Boolean(effects.shield)) ||
+              (b.kind === "freeze" && Boolean(effects.freeze));
+            return (
+              <button
+                key={b.id}
+                type="button"
+                disabled={blocked}
+                onClick={() => game.activateBooster(b.id as TempBoosterId)}
+                title={b.name}
+                className={`relative flex shrink-0 items-center gap-1 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-sm shadow-sm backdrop-blur-md transition active:scale-95 ${
+                  blocked
+                    ? "cursor-not-allowed opacity-40"
+                    : "hover:bg-white/90"
+                }`}
+              >
+                <span>{b.emoji}</span>
+                <span className="rounded-full bg-indigo-100 px-1.5 text-[10px] font-bold text-indigo-600">
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ---------- footer ---------- */}
-      <footer className="relative z-10 mx-auto w-full max-w-md px-5 pb-6 pt-2">
+      <footer className="relative z-10 mx-auto w-full max-w-md px-5 pb-6 pt-1">
         <motion.button
           type="button"
           onClick={game.cashOut}
@@ -320,6 +431,34 @@ export default function Game() {
           <span className="pointer-events-none absolute inset-0 rounded-3xl border border-white/40" />
         </motion.button>
       </footer>
+
+      {/* ---------- offline earnings ---------- */}
+      <AnimatePresence>
+        {offlineClaim && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.35 }}
+            className="absolute inset-x-4 bottom-28 z-50 mx-auto max-w-md rounded-3xl border border-white/70 bg-white/80 p-4 shadow-2xl shadow-indigo-900/15 backdrop-blur-2xl"
+          >
+            <p className="text-sm font-bold text-slate-800">
+              Bienvenue ! 🎉 Pendant tes {offlineClaim.minutes} min d'absence,
+              tes machines ont fabriqué&nbsp;:
+            </p>
+            <p className="mt-1 text-2xl font-black text-amber-500">
+              {engine.formatCoins(offlineClaim.coins)} 🪙
+            </p>
+            <button
+              type="button"
+              onClick={game.claimOffline}
+              className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-3 text-base font-black uppercase tracking-widest text-white shadow-lg active:scale-95"
+            >
+              Récupérer
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

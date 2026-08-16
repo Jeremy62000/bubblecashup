@@ -1,10 +1,22 @@
 // ---------------------------------------------------------------------------
 // Bubble Up — game loop hook. Owns the run state (bubble + risk + value),
 // the combo system, cash-out / explosion flow, saves to localStorage and
-// fires burst/flash effects for the UI.
+// fires burst/flash effects for the UI. V2 adds the shop: permanent
+// upgrades, temporary boosters, skins and idle passive earnings.
 // ---------------------------------------------------------------------------
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import * as engine from "@/lib/game-engine";
+import {
+  passiveById,
+  passiveRate,
+  skinById,
+  tempBoosterById,
+  TEMP_BOOSTER_MAX_STOCK,
+  type TempBoosterId,
+  upgradeById,
+  upgradePrice,
+  type UpgradeId,
+} from "@/lib/shop";
 import { initAudio, setMuted, sfx } from "@/lib/audio";
 
 const SAVE_KEY = "bubble-up-save-v1";
@@ -17,12 +29,30 @@ export interface SaveData {
   cashouts: number;
   pops: number;
   muted: boolean;
+  upgrades: engine.Upgrades;
+  boosters: Record<TempBoosterId, number>;
+  skins: string[];
+  skin: string;
+  passives: Record<string, boolean>;
+  lastSeen: number;
 }
 
 export interface BurstEvent {
   id: number;
   kind: "coins" | "gems" | "pop";
   big: boolean;
+}
+
+export interface ActiveEffectsView {
+  shield: { until: number; duration: number } | null;
+  freeze: { until: number; risk: number } | null;
+  cashMult: number | null;
+  lucky: boolean;
+}
+
+export interface OfflineClaim {
+  coins: number;
+  minutes: number;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -33,16 +63,60 @@ const DEFAULT_SAVE: SaveData = {
   cashouts: 0,
   pops: 0,
   muted: false,
+  upgrades: { ...engine.EMPTY_UPGRADES },
+  boosters: {
+    shield5: 0,
+    freeze10: 0,
+    double: 0,
+    shield15: 0,
+    freeze25: 0,
+    triple: 0,
+    lucky: 0,
+  },
+  skins: ["classic"],
+  skin: "classic",
+  passives: {},
+  lastSeen: Date.now(),
 };
 
 function loadSave(): SaveData {
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return DEFAULT_SAVE;
-    return { ...DEFAULT_SAVE, ...(JSON.parse(raw) as Partial<SaveData>) };
+    const parsed = JSON.parse(raw) as Partial<SaveData>;
+    return {
+      ...DEFAULT_SAVE,
+      ...parsed,
+      upgrades: { ...DEFAULT_SAVE.upgrades, ...(parsed.upgrades ?? {}) },
+      boosters: { ...DEFAULT_SAVE.boosters, ...(parsed.boosters ?? {}) },
+      passives: { ...(parsed.passives ?? {}) },
+      skins: Array.isArray(parsed.skins) ? parsed.skins : ["classic"],
+    };
   } catch {
     return DEFAULT_SAVE;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Module-level save store, shared by every page (game, shop, …) so the
+// wallet/upgrades stay in sync across routes.
+// ---------------------------------------------------------------------------
+
+const listeners = new Set<() => void>();
+let storeSave: SaveData = loadSave();
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const getSave = () => storeSave;
+
+function setStoreSave(next: SaveData) {
+  storeSave = next;
+  listeners.forEach((l) => l());
 }
 
 interface RunRef {
@@ -53,6 +127,10 @@ interface RunRef {
   comboStacks: number;
   save: SaveData;
   paused: boolean;
+  /** Pending “porte-bonheur”: next bubble is guaranteed special. */
+  _pendingLucky: boolean;
+  /** Pending ×2 / ×3 cash multiplier until the next cash-out. */
+  _cashMult: number | null;
 }
 
 function createRunRef(kind: engine.BubbleKind): RunRef {
@@ -62,15 +140,29 @@ function createRunRef(kind: engine.BubbleKind): RunRef {
     baseElapsed: 0,
     status: "inflating",
     comboStacks: 0,
-    save: loadSave(),
+    save: getSave(),
     paused: false,
+    _pendingLucky: false,
+    _cashMult: null,
   };
 }
+
+/** Empty effects view. */
+const NO_EFFECTS: ActiveEffectsView = {
+  shield: null,
+  freeze: null,
+  cashMult: null,
+  lucky: false,
+};
 
 export function useBubbleGame() {
   const runRef = useRef<RunRef>(createRunRef(engine.rollBubbleKind()));
   const burstIdRef = useRef(0);
-  const [save, setSave] = useState<SaveData>(runRef.current.save);
+  const save = useSyncExternalStore(subscribe, getSave);
+  // initial wallet ref used for first renders before effects
+  runRef.current.save = save;
+  const [offlineClaim, setOfflineClaim] = useState<OfflineClaim | null>(null);
+  const [effects, setEffects] = useState<ActiveEffectsView>(NO_EFFECTS);
   const [snapshot, setSnapshot] = useState({
     kind: runRef.current.kind as engine.BubbleKind,
     elapsed: 0,
@@ -93,7 +185,7 @@ export function useBubbleGame() {
   /** Merge a patch into the persisted wallet/stats. */
   const commit = useCallback((patch: Partial<SaveData>) => {
     runRef.current.save = { ...runRef.current.save, ...patch };
-    setSave(runRef.current.save);
+    setStoreSave(runRef.current.save);
   }, []);
 
   const nextBurst = useCallback(
@@ -105,14 +197,49 @@ export function useBubbleGame() {
     [],
   );
 
+  // --- offline earnings (once per session) --------------------------------
+  useEffect(() => {
+    const r = runRef.current;
+    const now = Date.now();
+    const awayMinutes = (now - r.save.lastSeen) / 60_000;
+    const rate = passiveRate(r.save.passives);
+    if (rate > 0 && awayMinutes > 1) {
+      const { coins, appliedMinutes } = engine.offlineGain(
+        awayMinutes,
+        rate,
+        r.save.upgrades,
+      );
+      if (coins >= 1) {
+        setOfflineClaim({ coins, minutes: Math.round(appliedMinutes) });
+      }
+    }
+    commit({ lastSeen: now });
+  }, [commit]);
+
+  const claimOffline = useCallback(() => {
+    if (!offlineClaim) return;
+    commit({
+      coins: runRef.current.save.coins + offlineClaim.coins,
+      lastSeen: Date.now(),
+    });
+    sfx.jackpot();
+    setOfflineClaim(null);
+  }, [commit, offlineClaim]);
+
+  // --- run lifecycle -------------------------------------------------------
   const resetRun = useCallback(() => {
     const r = runRef.current;
-    r.kind = engine.rollBubbleKind();
+    const up = r.save.upgrades;
+    r.kind = r._pendingLucky
+      ? engine.rollLuckyBubbleKind()
+      : engine.rollBubbleKind(Math.random, engine.specialBubbleChance(up));
+    r._pendingLucky = false;
     r.phaseStartedAt = Date.now();
     r.baseElapsed = 0;
     r.status = "inflating";
     r.paused = false;
     commit({ runs: r.save.runs + 1 });
+    setEffects(NO_EFFECTS);
     setSnapshot((s) => ({
       ...s,
       kind: r.kind,
@@ -130,10 +257,18 @@ export function useBubbleGame() {
     if (r.status !== "inflating") return;
     initAudio();
 
+    const up = r.save.upgrades;
     const elapsed = effectiveElapsed();
-    const value = engine.valueForElapsed(elapsed, r.kind);
-    const risk = engine.riskForElapsed(elapsed, engine.baseRiskFor(r.kind));
-    const multiplier = engine.comboMultiplierFor(r.comboStacks);
+    const value = engine.valueForElapsed(elapsed, r.kind, up);
+    const baseRisk = engine.baseRiskFor(r.kind);
+    const frozen = effectsRef.current.freeze;
+    const risk =
+      frozen && Date.now() < frozen.until
+        ? frozen.risk
+        : engine.riskForElapsed(elapsed, baseRisk, up);
+    const comboMult = engine.comboMultiplierFor(r.comboStacks);
+    const tempMult = r._cashMult ?? 1;
+    const multiplier = comboMult * tempMult;
 
     let coins = 0;
     let gems = 0;
@@ -141,6 +276,8 @@ export function useBubbleGame() {
       gems = engine.rollRainbowGems();
     } else {
       coins = Math.floor(value * multiplier);
+      // filon de gemmes : small chance of a bonus gem on any cash-out
+      if (Math.random() < engine.gemVeinChance(up)) gems += 1;
     }
 
     const bestBubble = Math.max(r.save.bestBubble, value);
@@ -151,13 +288,17 @@ export function useBubbleGame() {
       cashouts: r.save.cashouts + 1,
     });
 
-    // Combo: a high-risk cash-out stacks the next multiplier, a very early
-    // one resets it.
+    // Combo: high-risk cash-outs stack (up to the "mémoire de combo" cap);
+    // a very early cash-out resets it.
+    const maxStacks = engine.comboMaxStacks(up);
     if (risk >= engine.COMBO_HIGH_RISK * 100) {
-      r.comboStacks += 1;
+      if (r.comboStacks < maxStacks) r.comboStacks += 1;
     } else if (risk <= engine.COMBO_LOW_RISK * 100) {
       r.comboStacks = 0;
     }
+
+    // Consume pending cash multiplier (double/triple gains)
+    r._cashMult = null;
 
     // Sounds + effects
     if (r.kind === "golden") sfx.golden();
@@ -173,6 +314,7 @@ export function useBubbleGame() {
       lastGain: { coins, gems },
       burst: nextBurst(r.kind === "rainbow" ? "gems" : "coins", value >= 60),
     }));
+    setEffects((e) => ({ ...e, cashMult: null }));
     window.setTimeout(() => {
       if (runRef.current === r) resetRun();
     }, engine.RESET_DELAY_MS);
@@ -184,6 +326,7 @@ export function useBubbleGame() {
     initAudio();
     sfx.pop();
     r.comboStacks = 0;
+    r._cashMult = null;
     commit({ pops: r.save.pops + 1 });
     r.status = "popped";
     setSnapshot((s) => ({
@@ -193,32 +336,104 @@ export function useBubbleGame() {
       flash: s.flash + 1,
       burst: nextBurst("pop", false),
     }));
+    setEffects(NO_EFFECTS);
     window.setTimeout(() => {
       if (runRef.current === r) resetRun();
     }, engine.RESET_DELAY_MS);
   }, [commit, nextBurst, resetRun]);
+
+  // --- boosters ------------------------------------------------------------
+  const activateBooster = useCallback(
+    (id: TempBoosterId) => {
+      const r = runRef.current;
+      if (r.status !== "inflating") return;
+      if (r.save.boosters[id] < 1) return;
+      const def = tempBoosterById(id);
+      initAudio();
+      sfx.click();
+
+      const now = Date.now();
+      if (def.kind === "shield") {
+        const current = effects.shield;
+        if (current && now < current.until) return;
+        setEffects((e) => ({
+          ...e,
+          shield: { until: now + (def.duration ?? 5) * 1000, duration: def.duration ?? 5 },
+        }));
+      } else if (def.kind === "freeze") {
+        const current = effects.freeze;
+        if (current && now < current.until) return;
+        const baseRisk = engine.baseRiskFor(r.kind);
+        const frozenRisk = engine.riskForElapsed(
+          effectiveElapsed(),
+          baseRisk,
+          r.save.upgrades,
+        );
+        setEffects((e) => ({
+          ...e,
+          freeze: { until: now + (def.duration ?? 10) * 1000, risk: frozenRisk },
+        }));
+      } else if (def.kind === "cash") {
+        setEffects((e) => ({ ...e, cashMult: def.duration ?? 2 }));
+        sfx.cash();
+      } else {
+        // lucky: next bubble guaranteed special
+        r._pendingLucky = true;
+        setEffects((e) => ({ ...e, lucky: true }));
+      }
+
+      commit({
+        boosters: { ...r.save.boosters, [id]: r.save.boosters[id] - 1 },
+      });
+    },
+    [commit, effectiveElapsed, effects],
+  );
+
+  // ref mirror of effects (used inside intervals without re-registering)
+  const effectsRef = useRef(effects);
+  useEffect(() => {
+    effectsRef.current = effects;
+  }, [effects]);
 
   // --- game loops ----------------------------------------------------------
   useEffect(() => {
     const uiTick = window.setInterval(() => {
       const r = runRef.current;
       if (r.status !== "inflating" || r.paused) return;
+      const up = r.save.upgrades;
       const elapsed = effectiveElapsed();
-      const risk = engine.riskForElapsed(elapsed, engine.baseRiskFor(r.kind));
+      const speedMult = 1 + 0.1 * up.inflate;
+      const baseRisk = engine.baseRiskFor(r.kind);
+
+      setEffects((e) => {
+        const now = Date.now();
+        const shield = e.shield && now < e.shield.until ? e.shield : null;
+        const freeze = e.freeze && now < e.freeze.until ? e.freeze : null;
+        return { ...e, shield, freeze };
+      });
+      const frozen = effectsRef.current.freeze;
       setSnapshot((s) => ({
         ...s,
         elapsed,
-        risk,
-        value: engine.valueForElapsed(elapsed, r.kind),
-        size: engine.sizeForElapsed(elapsed),
+        risk:
+          frozen && Date.now() < frozen.until
+            ? frozen.risk
+            : engine.riskForElapsed(elapsed, baseRisk, up),
+        value: engine.valueForElapsed(elapsed, r.kind, up),
+        size: engine.sizeForElapsed(elapsed, speedMult),
       }));
     }, engine.UI_TICK_MS);
 
     const boomTick = window.setInterval(() => {
       const r = runRef.current;
       if (r.status !== "inflating" || r.paused) return;
+      const up = r.save.upgrades;
       const elapsed = effectiveElapsed();
-      const risk = engine.riskForElapsed(elapsed, engine.baseRiskFor(r.kind));
+      const baseRisk = engine.baseRiskFor(r.kind);
+      const risk = engine.riskForElapsed(elapsed, baseRisk, up);
+      // A shield blocks the explosion entirely; a frozen risk is not solved.
+      const shielded = effectsRef.current.shield && Date.now() < effectsRef.current.shield.until;
+      if (shielded) return;
       if (Math.random() < engine.explosionChance(risk)) explode();
     }, engine.EXPLOSION_TICK_MS);
 
@@ -247,10 +462,98 @@ export function useBubbleGame() {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [effectiveElapsed]);
 
+  // --- persistence --------------------------------------------------------
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SAVE_KEY,
+        JSON.stringify({ ...save, lastSeen: Date.now() }),
+      );
+    } catch {
+      /* storage full/blocked — gameplay continues in memory */
+    }
+  }, [save]);
+
   // --- audio mute sync -----------------------------------------------------
   useEffect(() => {
     setMuted(save.muted);
   }, [save.muted]);
+
+  // --- shop actions ---------------------------------------------------------
+  const buyUpgrade = useCallback(
+    (id: UpgradeId) => {
+      const r = runRef.current;
+      const def = upgradeById(id);
+      const level = r.save.upgrades[id];
+      if (level >= def.maxLevel) return;
+      const price = upgradePrice(def, level);
+      if (r.save.coins < price) return;
+      initAudio();
+      sfx.cash();
+      commit({
+        coins: r.save.coins - price,
+        upgrades: { ...r.save.upgrades, [id]: level + 1 },
+      });
+    },
+    [commit],
+  );
+
+  const buyBooster = useCallback(
+    (id: TempBoosterId) => {
+      const r = runRef.current;
+      if (r.save.boosters[id] >= TEMP_BOOSTER_MAX_STOCK) return;
+      const def = tempBoosterById(id);
+      if (r.save.coins < def.price) return;
+      initAudio();
+      sfx.click();
+      commit({
+        coins: r.save.coins - def.price,
+        boosters: { ...r.save.boosters, [id]: r.save.boosters[id] + 1 },
+      });
+    },
+    [commit],
+  );
+
+  const buySkin = useCallback(
+    (id: string) => {
+      const r = runRef.current;
+      const def = skinById(id);
+      if (r.save.skins.includes(id)) {
+        if (r.save.skin !== id) {
+          initAudio();
+          sfx.click();
+          commit({ skin: id });
+        }
+        return;
+      }
+      if (r.save.gems < def.gems) return;
+      initAudio();
+      sfx.gem();
+      commit({
+        gems: r.save.gems - def.gems,
+        skins: [...r.save.skins, id],
+        skin: id,
+      });
+    },
+    [commit],
+  );
+
+  const buyPassive = useCallback(
+    (id: string) => {
+      const r = runRef.current;
+      if (r.save.passives[id]) return;
+      const def = passiveById(id);
+      if (def.unlockRuns > r.save.runs) return;
+      if (r.save.coins < def.price) return;
+      initAudio();
+      sfx.cash();
+      commit({
+        coins: r.save.coins - def.price,
+        passives: { ...r.save.passives, [id]: true },
+      });
+    },
+    [commit],
+  );
 
   const toggleMute = useCallback(() => {
     initAudio();
@@ -262,5 +565,19 @@ export function useBubbleGame() {
     setSnapshot((s) => ({ ...s, burst: null }));
   }, []);
 
-  return { ...snapshot, save, cashOut, toggleMute, clearBurst };
+  return {
+    ...snapshot,
+    save,
+    effects,
+    offlineClaim,
+    cashOut,
+    toggleMute,
+    clearBurst,
+    activateBooster,
+    buyUpgrade,
+    buyBooster,
+    buySkin,
+    buyPassive,
+    claimOffline,
+  };
 }

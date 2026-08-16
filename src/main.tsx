@@ -15,6 +15,7 @@ import "./types/global.d.ts";
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Game = lazy(() => import("./pages/Game.tsx"));
+const Shop = lazy(() => import("./pages/Shop.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -73,6 +74,14 @@ createRoot(document.getElementById("root")!).render(
                 element={
                   <RequireAuth>
                     <Game />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/shop"
+                element={
+                  <RequireAuth>
+                    <Shop />
                   </RequireAuth>
                 }
               />
