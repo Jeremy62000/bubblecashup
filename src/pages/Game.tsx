@@ -407,9 +407,10 @@ export default function Game() {
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-baseline gap-2">
             <motion.span
-              key={multiplier}
-              initial={{ scale: 1.2, color: "#fbbf24" }}
-              animate={{ scale: 1, color: "#ffffff" }}
+              key={engine.formatLiveValue(value)}
+              initial={{ scale: 1.05, opacity: 0.75 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
               className="text-4xl font-black tabular-nums"
             >
               {engine.formatLiveValue(value)}

@@ -12,10 +12,10 @@ export type RunStatus = "inflating" | "cashed" | "popped";
 export const BASE_COINS_PER_SECOND = 4;
 
 /** Seconds of inflation at which risk hits 100% (with a normal bubble). */
-export const MAX_RISK_SECONDS = 88;
+export const MAX_RISK_SECONDS = 50;
 
-/** Exponent of the risk curve (>1 → slow start, then accelerates). */
-export const RISK_EXPONENT = 2.0;
+/** Exponent of the risk curve (>1 → gentle start, then fast). */
+export const RISK_EXPONENT = 1.6;
 
 /** Golden bubbles start with this risk floor. */
 export const GOLDEN_BASE_RISK = 50;
@@ -126,13 +126,19 @@ export function multiplierFor(kind: BubbleKind): number {
   return kind === "golden" ? GOLDEN_MULTIPLIER : 1;
 }
 
-/** Bubble diameter in px (grows with inflation speed upgrades too). */
+/** Seconds of inflation before the bubble reaches its max size. */
+export const SIZE_MAX_SECONDS = 26;
+
+/**
+ * Bubble diameter in px. It grows during the first ~30 s, then stops:
+ * afterwards only the value (and the risk) keep climbing.
+ */
 export function sizeForElapsed(
   elapsedSeconds: number,
   speedMult = 1,
 ): number {
-  const f = clamp((elapsedSeconds * speedMult) / MAX_RISK_SECONDS, 0, 1);
-  return 84 + 150 * Math.pow(f, 0.75);
+  const f = clamp((elapsedSeconds * speedMult) / SIZE_MAX_SECONDS, 0, 1);
+  return 84 + 150 * Math.pow(f, 0.65);
 }
 
 /** Base risk (%) that a bubble starts with. */
@@ -142,11 +148,11 @@ export function baseRiskFor(kind: BubbleKind): number {
 
 /**
  * Probability that the bubble explodes on a single explosion check tick,
- * weighted by current risk (%): at 50% ≈ 1/10 per tick, >90% ≈ every second.
+ * weighted by current risk (%). Higher weighting = it bursts sooner.
  */
 export function explosionChance(riskPercent: number): number {
   const r = clamp(riskPercent, 0, 100) / 100;
-  return 0.32 * Math.pow(r, 1.7);
+  return 0.45 * Math.pow(r, 1.6);
 }
 
 /** Chance (0..1) of a special bubble, boosted by the clover. */
@@ -210,8 +216,7 @@ export function formatCoins(value: number): string {
   return Math.floor(value).toLocaleString("fr-FR");
 }
 
-/** Formats the in-run value (keeps decimals while it's small). */
+/** Formats the in-run value — always whole numbers, no comma: 1, 2, 3… 48, 49… */
 export function formatLiveValue(value: number): string {
-  if (value >= 100) return Math.floor(value).toLocaleString("fr-FR");
-  return value.toFixed(1);
+  return Math.floor(value).toLocaleString("fr-FR");
 }
