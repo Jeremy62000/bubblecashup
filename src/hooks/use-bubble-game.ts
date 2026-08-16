@@ -1,11 +1,22 @@
 // ---------------------------------------------------------------------------
 // Bubble Up — game loop hook. Owns the run state (bubble + risk + value),
 // the combo system, cash-out / explosion flow, saves to localStorage and
-// fires burst/flash effects for the UI. V2 adds the shop: permanent
-// upgrades, temporary boosters, skins and idle passive earnings.
+// fires burst/flash effects for the UI. V2 adds the shop; V3 adds daily
+// challenges, the streak and achievements.
 // ---------------------------------------------------------------------------
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import * as engine from "@/lib/game-engine";
+import {
+  ACHIEVEMENTS,
+  DAILY_BONUS_GEMS,
+  goalLabel,
+  newDailyState,
+  progressOf,
+  streakReward,
+  todayKey,
+  type DailyState,
+} from "@/lib/challenges";
 import {
   passiveById,
   passiveRate,
@@ -35,6 +46,12 @@ export interface SaveData {
   skin: string;
   passives: Record<string, boolean>;
   lastSeen: number;
+  /** Coins earned over the whole life of the account. */
+  lifetimeCoins: number;
+  /** Daily challenges + connection streak (V3). */
+  daily: DailyState;
+  /** Unlocked achievement ids (V3). */
+  achievements: string[];
 }
 
 export interface BurstEvent {
@@ -77,6 +94,9 @@ const DEFAULT_SAVE: SaveData = {
   skin: "classic",
   passives: {},
   lastSeen: Date.now(),
+  lifetimeCoins: 0,
+  daily: newDailyState(todayKey(), undefined),
+  achievements: [],
 };
 
 function loadSave(): SaveData {
@@ -91,6 +111,13 @@ function loadSave(): SaveData {
       boosters: { ...DEFAULT_SAVE.boosters, ...(parsed.boosters ?? {}) },
       passives: { ...(parsed.passives ?? {}) },
       skins: Array.isArray(parsed.skins) ? parsed.skins : ["classic"],
+      daily:
+        parsed.daily && parsed.daily.date === todayKey()
+          ? parsed.daily
+          : newDailyState(todayKey(), parsed.daily),
+      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
+      lifetimeCoins:
+        typeof parsed.lifetimeCoins === "number" ? parsed.lifetimeCoins : 0,
     };
   } catch {
     return DEFAULT_SAVE;
@@ -197,6 +224,43 @@ export function useBubbleGame() {
     [],
   );
 
+  // --- daily rollover (midnight → new goals, streak update) ---------------
+  const ensureDaily = useCallback(() => {
+    const r = runRef.current;
+    if (r.save.daily.date === todayKey()) return;
+    commit({ daily: newDailyState(todayKey(), r.save.daily) });
+  }, [commit]);
+
+  useEffect(() => {
+    ensureDaily();
+  }, [ensureDaily]);
+
+  // --- achievements: unlock + award gems + notify -------------------------
+  const awardAchievements = useCallback(() => {
+    const r = runRef.current;
+    const s = r.save;
+    const fresh: string[] = [];
+    let gems = 0;
+    for (const a of ACHIEVEMENTS) {
+      if (!s.achievements.includes(a.id) && a.value(s) >= a.target) {
+        fresh.push(a.id);
+        gems += a.reward;
+      }
+    }
+    if (fresh.length === 0) return;
+    commit({
+      achievements: [...s.achievements, ...fresh],
+      gems: s.gems + gems,
+    });
+    sfx.gem();
+    fresh.forEach((id) => {
+      const a = ACHIEVEMENTS.find((x) => x.id === id)!;
+      toast.success(`Succès débloqué : ${a.name}`, {
+        description: `+${a.reward} 💎`,
+      });
+    });
+  }, [commit]);
+
   // --- offline earnings (once per session) --------------------------------
   useEffect(() => {
     const r = runRef.current;
@@ -239,6 +303,7 @@ export function useBubbleGame() {
     r.status = "inflating";
     r.paused = false;
     commit({ runs: r.save.runs + 1 });
+    awardAchievements();
     setEffects(NO_EFFECTS);
     setSnapshot((s) => ({
       ...s,
@@ -250,7 +315,7 @@ export function useBubbleGame() {
       status: "inflating",
       lastGain: null,
     }));
-  }, [commit]);
+  }, [commit, awardAchievements]);
 
   const cashOut = useCallback(() => {
     const r = runRef.current;
@@ -280,22 +345,39 @@ export function useBubbleGame() {
       if (Math.random() < engine.gemVeinChance(up)) gems += 1;
     }
 
+    // Combo: high-risk cash-outs stack (up to the "mémoire de combo" cap);
+    // a very early cash-out resets it.
+    const maxStacks = engine.comboMaxStacks(up);
+    let nextStacks = r.comboStacks;
+    if (risk >= engine.COMBO_HIGH_RISK * 100) {
+      if (nextStacks < maxStacks) nextStacks += 1;
+    } else if (risk <= engine.COMBO_LOW_RISK * 100) {
+      nextStacks = 0;
+    }
+
+    ensureDaily();
+    const daily = runRef.current.save.daily;
     const bestBubble = Math.max(r.save.bestBubble, value);
     commit({
       coins: r.save.coins + coins,
       gems: r.save.gems + gems,
       bestBubble,
       cashouts: r.save.cashouts + 1,
+      lifetimeCoins: r.save.lifetimeCoins + coins,
+      daily: {
+        ...daily,
+        cashToday: daily.cashToday + coins,
+        bestBubbleToday: Math.max(daily.bestBubbleToday, value),
+        specialToday: daily.specialToday + (r.kind !== "normal" ? 1 : 0),
+        cashoutsToday: daily.cashoutsToday + 1,
+        comboToday: Math.max(
+          daily.comboToday,
+          engine.comboMultiplierFor(nextStacks),
+        ),
+      },
     });
-
-    // Combo: high-risk cash-outs stack (up to the "mémoire de combo" cap);
-    // a very early cash-out resets it.
-    const maxStacks = engine.comboMaxStacks(up);
-    if (risk >= engine.COMBO_HIGH_RISK * 100) {
-      if (r.comboStacks < maxStacks) r.comboStacks += 1;
-    } else if (risk <= engine.COMBO_LOW_RISK * 100) {
-      r.comboStacks = 0;
-    }
+    r.comboStacks = nextStacks;
+    awardAchievements();
 
     // Consume pending cash multiplier (double/triple gains)
     r._cashMult = null;
@@ -318,7 +400,7 @@ export function useBubbleGame() {
     window.setTimeout(() => {
       if (runRef.current === r) resetRun();
     }, engine.RESET_DELAY_MS);
-  }, [commit, effectiveElapsed, nextBurst, resetRun]);
+  }, [awardAchievements, commit, effectiveElapsed, ensureDaily, nextBurst, resetRun]);
 
   const explode = useCallback(() => {
     const r = runRef.current;
@@ -328,6 +410,7 @@ export function useBubbleGame() {
     r.comboStacks = 0;
     r._cashMult = null;
     commit({ pops: r.save.pops + 1 });
+    awardAchievements();
     r.status = "popped";
     setSnapshot((s) => ({
       ...s,
@@ -340,7 +423,7 @@ export function useBubbleGame() {
     window.setTimeout(() => {
       if (runRef.current === r) resetRun();
     }, engine.RESET_DELAY_MS);
-  }, [commit, nextBurst, resetRun]);
+  }, [awardAchievements, commit, nextBurst, resetRun]);
 
   // --- boosters ------------------------------------------------------------
   const activateBooster = useCallback(
@@ -555,6 +638,70 @@ export function useBubbleGame() {
     [commit],
   );
 
+  // --- daily challenges claims --------------------------------------------
+  const claimDailyGoal = useCallback(
+    (goalId: string) => {
+      const r = runRef.current;
+      const daily = r.save.daily;
+      if (daily.date !== todayKey() || daily.claimed.includes(goalId)) return;
+      const goal = daily.goals.find((g) => g.id === goalId);
+      if (!goal || !progressOf(daily, goal).complete) return;
+      initAudio();
+      sfx.gem();
+      commit({
+        gems: r.save.gems + goal.reward,
+        daily: { ...daily, claimed: [...daily.claimed, goalId] },
+      });
+      toast.success(`Défi terminé : ${goalLabel(goal)}`, {
+        description: `+${goal.reward} 💎`,
+      });
+    },
+    [commit],
+  );
+
+  const claimDailyBonus = useCallback(() => {
+    const r = runRef.current;
+    const daily = r.save.daily;
+    if (daily.date !== todayKey() || daily.bonusClaimed) return;
+    const allDone = daily.goals.every((g) => progressOf(daily, g).complete);
+    if (!allDone) return;
+    initAudio();
+    sfx.jackpot();
+    commit({
+      gems: r.save.gems + DAILY_BONUS_GEMS,
+      daily: { ...daily, bonusClaimed: true },
+    });
+    toast.success("Bonus des 3 défis !", {
+      description: `+${DAILY_BONUS_GEMS} 💎`,
+    });
+  }, [commit]);
+
+  const claimStreak = useCallback(() => {
+    const r = runRef.current;
+    const daily = r.save.daily;
+    if (daily.date !== todayKey() || daily.streakClaimed) return;
+    initAudio();
+    sfx.gem();
+    const reward = streakReward(daily.streak);
+    commit({
+      gems: r.save.gems + reward,
+      daily: { ...daily, streakClaimed: true },
+    });
+    toast.success(`Streak de ${daily.streak} jours !`, {
+      description: `+${reward} 💎`,
+    });
+  }, [commit]);
+
+  /** Wipes the whole save (debug / test). */
+  const resetProgress = useCallback(() => {
+    try {
+      window.localStorage.removeItem(SAVE_KEY);
+    } catch {
+      /* ignore */
+    }
+    window.location.reload();
+  }, []);
+
   const toggleMute = useCallback(() => {
     initAudio();
     sfx.click();
@@ -568,6 +715,7 @@ export function useBubbleGame() {
   return {
     ...snapshot,
     save,
+    daily: save.daily,
     effects,
     offlineClaim,
     cashOut,
@@ -579,6 +727,10 @@ export function useBubbleGame() {
     buySkin,
     buyPassive,
     claimOffline,
+    claimDailyGoal,
+    claimDailyBonus,
+    claimStreak,
+    resetProgress,
     /** Current elapsed seconds of the run (cheap, safe for per-frame reads). */
     getElapsed: effectiveElapsed,
   };
