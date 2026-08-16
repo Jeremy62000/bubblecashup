@@ -30,6 +30,8 @@ export interface DailyState {
   cashoutsToday: number;
   claimed: string[]; // goal ids claimed
   bonusClaimed: boolean;
+  /** Admin-quest ids claimed today. */
+  claimedAdmin: string[];
   streak: number;
   streakClaimed: boolean;
 }
@@ -109,6 +111,7 @@ export function newDailyState(
     cashoutsToday: 0,
     claimed: [],
     bonusClaimed: false,
+    claimedAdmin: [],
     streak: streakEligible ? prev.streak + 1 : 1,
     streakClaimed: false,
   };

@@ -32,12 +32,46 @@ const schema = defineSchema(
       role: v.optional(roleValidator), // role of the user. do not remove
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
-    // add other tables here
+    // --- world leaderboard ---
+    scores: defineTable({
+      userId: v.string(), // convex auth subject
+      name: v.string(), // displayed pseudo
+      biggestBubble: v.number(),
+      totalCoins: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_biggest", ["biggestBubble"])
+      .index("by_total", ["totalCoins"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // --- admin-defined custom quests ---
+    quests: defineTable({
+      title: v.string(),
+      emoji: v.string(),
+      type: v.string(), // same types as daily goals
+      target: v.number(),
+      reward: v.number(),
+      active: v.boolean(),
+      createdAt: v.number(),
+    }).index("by_active", ["active"]),
+
+    // --- global app settings (theme colors) ---
+    settings: defineTable({
+      theme: v.object({
+        bgA: v.string(),
+        bgB: v.string(),
+        bgC: v.string(),
+        nav1: v.string(),
+        nav2: v.string(),
+        cta1: v.string(),
+        cta2: v.string(),
+        cta3: v.string(),
+        bubbleA: v.string(),
+        bubbleB: v.string(),
+        bubbleC: v.string(),
+      }),
+      updatedAt: v.number(),
+    }),
   },
   {
     schemaValidation: false,

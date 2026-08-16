@@ -5,6 +5,8 @@
 // challenges, the streak and achievements.
 // ---------------------------------------------------------------------------
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import * as engine from "@/lib/game-engine";
 import {
@@ -52,6 +54,10 @@ export interface SaveData {
   daily: DailyState;
   /** Unlocked achievement ids (V3). */
   achievements: string[];
+  /** Display name used on the world leaderboard. */
+  pseudo: string;
+  /** Last values successfully synced to the Convex leaderboard. */
+  synced: { biggest: number; total: number };
 }
 
 export interface BurstEvent {
@@ -97,6 +103,8 @@ const DEFAULT_SAVE: SaveData = {
   lifetimeCoins: 0,
   daily: newDailyState(todayKey(), undefined),
   achievements: [],
+  pseudo: `Bulleur${Math.floor(1000 + Math.random() * 9000)}`,
+  synced: { biggest: 0, total: 0 },
 };
 
 function loadSave(): SaveData {
@@ -118,6 +126,11 @@ function loadSave(): SaveData {
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
       lifetimeCoins:
         typeof parsed.lifetimeCoins === "number" ? parsed.lifetimeCoins : 0,
+      pseudo: typeof parsed.pseudo === "string" ? parsed.pseudo : `Bulleur${Math.floor(1000 + Math.random() * 9000)}`,
+      synced: {
+        biggest: parsed.synced?.biggest ?? 0,
+        total: parsed.synced?.total ?? 0,
+      },
     };
   } catch {
     return DEFAULT_SAVE;
@@ -185,6 +198,7 @@ const NO_EFFECTS: ActiveEffectsView = {
 export function useBubbleGame() {
   const runRef = useRef<RunRef>(createRunRef(engine.rollBubbleKind()));
   const burstIdRef = useRef(0);
+  const upsertScore = useMutation(api.leaderboard.upsertScore);
   const save = useSyncExternalStore(subscribe, getSave);
   // initial wallet ref used for first renders before effects
   runRef.current.save = save;
@@ -557,6 +571,30 @@ export function useBubbleGame() {
     }
   }, [save]);
 
+  // --- leaderboard sync (only when beating a record / every 500 coins) -----
+  useEffect(() => {
+    const s = save;
+    const syncBiggest = s.bestBubble > s.synced.biggest;
+    const syncTotal = s.lifetimeCoins - s.synced.total >= 500;
+    if (!syncBiggest && !syncTotal) return;
+    const next = {
+      biggest: Math.max(s.bestBubble, s.synced.biggest),
+      total: Math.max(s.lifetimeCoins, s.synced.total),
+    };
+    upsertScore({
+      name: s.pseudo,
+      biggestBubble: s.bestBubble,
+      totalCoins: s.lifetimeCoins,
+    })
+      .then(() => {
+        runRef.current.save = { ...runRef.current.save, synced: next };
+        setStoreSave(runRef.current.save);
+      })
+      .catch(() => {
+        /* offline — will retry when the score changes again */
+      });
+  }, [save.bestBubble, save.lifetimeCoins, save.pseudo, save.synced.biggest, save.synced.total, upsertScore]);
+
   // --- audio mute sync -----------------------------------------------------
   useEffect(() => {
     setMuted(save.muted);
@@ -692,6 +730,24 @@ export function useBubbleGame() {
     });
   }, [commit]);
 
+  const claimAdminQuest = useCallback(
+    (questId: string, reward: number) => {
+      const r = runRef.current;
+      const daily = r.save.daily;
+      if (daily.date !== todayKey() || daily.claimedAdmin.includes(questId)) return;
+      initAudio();
+      sfx.gem();
+      commit({
+        gems: r.save.gems + reward,
+        daily: { ...daily, claimedAdmin: [...daily.claimedAdmin, questId] },
+      });
+      toast.success("Quête terminée !", {
+        description: `+${reward} 💎`,
+      });
+    },
+    [commit],
+  );
+
   /** Wipes the whole save (debug / test). */
   const resetProgress = useCallback(() => {
     try {
@@ -730,6 +786,7 @@ export function useBubbleGame() {
     claimDailyGoal,
     claimDailyBonus,
     claimStreak,
+    claimAdminQuest,
     resetProgress,
     /** Current elapsed seconds of the run (cheap, safe for per-frame reads). */
     getElapsed: effectiveElapsed,

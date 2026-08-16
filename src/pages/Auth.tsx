@@ -16,6 +16,7 @@ import {
 
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { pageBgStyle } from "@/lib/theme";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -112,10 +113,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   return (
     <div
       className="min-h-screen flex flex-col overflow-hidden relative text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       {/* decorative glowing bubbles */}
       <span aria-hidden className="pointer-events-none absolute left-[8%] top-[16%] h-16 w-16 rounded-full border border-white/15 bg-white/[0.06] blur-[1px]" />

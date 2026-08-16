@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { pageBgStyle } from "@/lib/theme";
 
 export default function NotFound() {
   return (
@@ -7,10 +8,7 @@ export default function NotFound() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
       className="min-h-screen flex flex-col text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
 
       

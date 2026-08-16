@@ -1,5 +1,7 @@
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Coins, Flame, Gem } from "lucide-react";
+import { Coins, Flame, Gem, Sparkles } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useBubbleGame } from "@/hooks/use-bubble-game";
 import {
@@ -10,6 +12,7 @@ import {
   streakReward,
 } from "@/lib/challenges";
 import * as engine from "@/lib/game-engine";
+import { ctaStyle, pageBgStyle } from "@/lib/theme";
 
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -24,6 +27,7 @@ function GlassCard({ children, className = "" }: { children: React.ReactNode; cl
 export default function Challenges() {
   const game = useBubbleGame();
   const { save, daily } = game;
+  const adminQuests = useQuery(api.admin.getQuests);
   const todayReward = streakReward(daily.streak);
   const tomorrowReward = streakReward(daily.streak + 1);
   const allDone = daily.goals.every((g) => progressOf(daily, g).complete);
@@ -35,10 +39,7 @@ export default function Challenges() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative min-h-dvh overflow-hidden text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       <motion.span
         aria-hidden
@@ -112,10 +113,11 @@ export default function Challenges() {
               type="button"
               disabled={daily.streakClaimed}
               onClick={game.claimStreak}
-              className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-black transition-all active:scale-95 ${
+              style={daily.streakClaimed ? undefined : ctaStyle}
+              className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-black text-[#22103f] transition-all active:scale-95 ${
                 daily.streakClaimed
                   ? "cursor-default border border-white/10 bg-white/[0.04] text-violet-300/40"
-                  : "bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-[0_6px_24px_rgba(249,115,22,0.45)] hover:shadow-[0_6px_30px_rgba(249,115,22,0.6)]"
+                  : "shadow-[0_6px_24px_rgba(249,115,22,0.35)]"
               }`}
             >
               {daily.streakClaimed ? "Réclamé ✓" : "Réclamer"}
@@ -177,6 +179,71 @@ export default function Challenges() {
           })}
         </div>
 
+        {/* ---------- admin quests ---------- */}
+        {adminQuests !== undefined && adminQuests.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-widest text-violet-300/60">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+              Quêtes spéciales
+            </p>
+            {adminQuests.map((q) => {
+              const progress = progressOf(daily, {
+                id: q._id,
+                type: q.type as "cash_total" | "giant_bubble" | "combo" | "special" | "cashouts",
+                target: q.target,
+                reward: q.reward,
+              });
+              const claimed = daily.claimedAdmin.includes(q._id);
+              const pct = Math.min(100, (progress.current / q.target) * 100);
+              return (
+                <GlassCard key={q._id} className="p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-xl shadow-lg">
+                      {q.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-extrabold">{q.title}</p>
+                      <p className="text-[11px] text-violet-300/70">
+                        {progress.complete
+                          ? "Objectif atteint !"
+                          : `${Math.floor(progress.current)} / ${q.target}`}
+                      </p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            progress.complete
+                              ? "bg-gradient-to-r from-emerald-400 to-cyan-400"
+                              : "bg-gradient-to-r from-cyan-400 to-sky-400"
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                    {claimed ? (
+                      <span className="shrink-0 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-300">
+                        ✓ {q.reward} 💎
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!progress.complete}
+                        onClick={() => game.claimAdminQuest(q._id, q.reward)}
+                        className={`shrink-0 rounded-2xl px-3 py-2.5 text-xs font-black transition-all active:scale-95 ${
+                          progress.complete
+                            ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-[0_6px_24px_rgba(34,211,238,0.35)]"
+                            : "cursor-not-allowed bg-white/10 text-violet-300/40"
+                        }`}
+                      >
+                        +{q.reward} 💎
+                      </button>
+                    )}
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+        )}
+
         {/* ---------- all-3 bonus ---------- */}
         <AnimatePresence>
           {bonusAvailable && (
@@ -199,7 +266,8 @@ export default function Challenges() {
                 <button
                   type="button"
                   onClick={game.claimDailyBonus}
-                  className="shrink-0 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-4 py-2.5 text-xs font-black text-[#22103f] shadow-[0_6px_24px_rgba(244,114,182,0.45)] transition-all active:scale-95"
+                  style={ctaStyle}
+                  className="shrink-0 rounded-2xl px-4 py-2.5 text-xs font-black text-[#22103f] shadow-[0_6px_24px_rgba(244,114,182,0.35)] transition-all active:scale-95"
                 >
                   Réclamer
                 </button>

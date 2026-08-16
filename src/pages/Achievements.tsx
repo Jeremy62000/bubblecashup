@@ -15,6 +15,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useBubbleGame } from "@/hooks/use-bubble-game";
 import { ACHIEVEMENTS } from "@/lib/challenges";
 import * as engine from "@/lib/game-engine";
+import { pageBgStyle } from "@/lib/theme";
 
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -48,10 +49,7 @@ export default function Achievements() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative min-h-dvh overflow-hidden text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       <motion.span
         aria-hidden

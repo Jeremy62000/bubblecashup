@@ -12,6 +12,7 @@ import {
   type TempBoosterId,
 } from "@/lib/shop";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ctaStyle, pageBgStyle } from "@/lib/theme";
 
 function GlassRow({ children }: { children: React.ReactNode }) {
   return (
@@ -40,7 +41,7 @@ function NeonButton({
     buy:
       disabled
         ? "cursor-not-allowed bg-white/10 text-violet-300/40"
-        : "bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-[#22103f] shadow-[0_6px_24px_rgba(244,114,182,0.4)] hover:shadow-[0_6px_30px_rgba(244,114,182,0.55)]",
+        : "text-[#22103f] shadow-[0_6px_24px_rgba(244,114,182,0.35)] hover:shadow-[0_6px_30px_rgba(244,114,182,0.5)]",
     soft:
       disabled
         ? "cursor-not-allowed bg-white/10 text-violet-300/40"
@@ -51,7 +52,8 @@ function NeonButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-2xl px-3.5 py-2.5 text-xs font-black transition-all active:scale-95 ${tone === "buy" ? "" : ""} ${styles}`.trim()}
+      style={tone === "buy" && !disabled ? ctaStyle : undefined}
+      className={`rounded-2xl px-3.5 py-2.5 text-xs font-black transition-all active:scale-95 ${styles}`.trim()}
     >
       {children}
     </button>
@@ -68,10 +70,7 @@ export default function Shop() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative min-h-dvh overflow-hidden text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       <motion.span
         aria-hidden
@@ -324,7 +323,8 @@ export default function Shop() {
               <button
                 type="button"
                 onClick={game.claimOffline}
-                className="mt-3 w-full rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-3 text-base font-black uppercase tracking-widest text-[#22103f] shadow-lg active:scale-95"
+                style={ctaStyle}
+                className="mt-3 w-full rounded-2xl py-3 text-base font-black uppercase tracking-widest text-[#22103f] shadow-lg active:scale-95"
               >
                 Récupérer
               </button>

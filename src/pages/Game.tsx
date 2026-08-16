@@ -14,6 +14,7 @@ import { useBubbleGame } from "@/hooks/use-bubble-game";
 import * as engine from "@/lib/game-engine";
 import type { BubbleKind } from "@/lib/game-engine";
 import { skinById, TEMP_BOOSTERS, type TempBoosterId } from "@/lib/shop";
+import { ctaStyle, pageBgStyle } from "@/lib/theme";
 
 // --- special bubble badges (golden / rainbow keep their own look) -----------
 const SPECIAL_STYLES: Record<
@@ -177,10 +178,7 @@ export default function Game() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative flex min-h-dvh flex-col overflow-hidden text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       {decor}
 
@@ -505,10 +503,11 @@ export default function Game() {
           onClick={game.cashOut}
           whileTap={isBusy ? undefined : { scale: 0.95 }}
           disabled={isBusy}
-          className={`group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-4 text-xl font-black uppercase tracking-[0.18em] text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.45)] transition-all ${
+          style={ctaStyle}
+          className={`group relative w-full overflow-hidden rounded-full py-4 text-xl font-black uppercase tracking-[0.18em] text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.35)] transition-all ${
             isBusy
               ? "cursor-not-allowed opacity-40"
-              : "hover:shadow-[0_16px_54px_rgba(244,114,182,0.6)]"
+              : "hover:shadow-[0_16px_54px_rgba(244,114,182,0.5)]"
           }`}
         >
           {/* sweeping shine */}
@@ -543,7 +542,8 @@ export default function Game() {
             <button
               type="button"
               onClick={game.claimOffline}
-              className="mt-3 w-full rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-3 text-base font-black uppercase tracking-widest text-[#22103f] shadow-lg active:scale-95"
+              style={ctaStyle}
+              className="mt-3 w-full rounded-2xl py-3 text-base font-black uppercase tracking-widest text-[#22103f] shadow-lg active:scale-95"
             >
               Récupérer
             </button>

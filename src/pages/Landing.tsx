@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Coins, Gem, LogIn, Shield, Sparkles, Trophy } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { ctaStyle, pageBgStyle } from "@/lib/theme";
 
 const FLOATING = [
   { left: "4%", top: "18%", size: 64, delay: 0 },
@@ -79,10 +80,7 @@ export default function Landing() {
   return (
     <div
       className="relative min-h-dvh overflow-hidden text-white"
-      style={{
-        background:
-          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
-      }}
+      style={pageBgStyle}
     >
       {decor}
       <motion.div
@@ -155,7 +153,8 @@ export default function Landing() {
           >
             <Link
               to="/auth?returnTo=/play"
-              className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-8 py-4 text-lg font-black uppercase tracking-wide text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.5)] transition hover:shadow-[0_16px_54px_rgba(244,114,182,0.65)] active:scale-95"
+              style={ctaStyle}
+              className="group flex items-center gap-2 rounded-full px-8 py-4 text-lg font-black uppercase tracking-wide text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.4)] transition hover:shadow-[0_16px_54px_rgba(244,114,182,0.55)] active:scale-95"
             >
               Jouer maintenant
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -215,7 +214,10 @@ export default function Landing() {
             <div className="h-full w-[71%] rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500" />
           </div>
 
-          <div className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-3.5 text-base font-black uppercase tracking-[0.25em] text-[#22103f] shadow-[0_10px_36px_rgba(244,114,182,0.5)]">
+          <div
+            style={ctaStyle}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-black uppercase tracking-[0.25em] text-[#22103f] shadow-[0_10px_36px_rgba(244,114,182,0.4)]"
+          >
             Encaisser
           </div>
         </motion.div>
@@ -278,7 +280,8 @@ export default function Landing() {
             </p>
             <Link
               to="/auth?returnTo=/play"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 px-8 py-4 text-lg font-black uppercase tracking-wide text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.5)] transition hover:shadow-[0_16px_54px_rgba(244,114,182,0.65)] active:scale-95"
+              style={ctaStyle}
+              className="mt-6 inline-flex items-center gap-2 rounded-full px-8 py-4 text-lg font-black uppercase tracking-wide text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.4)] transition hover:shadow-[0_16px_54px_rgba(244,114,182,0.55)] active:scale-95"
             >
               C'est parti
               <ArrowRight className="h-5 w-5" />

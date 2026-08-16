@@ -77,6 +77,19 @@
   --sidebar-accent-foreground: oklch(0.97 0.012 294);
   --sidebar-border: oklch(0.93 0.02 294 / 0.12);
   --sidebar-ring: oklch(0.76 0.15 300);
+
+  /* Bubble Up admin-tunable theme (overridden live from Convex settings) */
+  --bu-bg-a: #4c1d95;
+  --bu-bg-b: #2e1065;
+  --bu-bg-c: #19063a;
+  --bu-nav-1: #8b5cf6;
+  --bu-nav-2: #d946ef;
+  --bu-cta-1: #fbbf24;
+  --bu-cta-2: #f97316;
+  --bu-cta-3: #f43f5e;
+  --bu-bubble-a: rgba(186, 230, 253, 0.92);
+  --bu-bubble-b: rgba(129, 140, 248, 0.55);
+  --bu-bubble-c: rgba(167, 139, 250, 0.5);
 }
 
 .dark {

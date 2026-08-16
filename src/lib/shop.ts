@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
 // Bubble Up — shop catalog & price helpers. Static data only (no React).
 // ---------------------------------------------------------------------------
+import { classicBubbleGradient } from "@/lib/theme";
 
 export type UpgradeId =
   | "inflate"
@@ -217,8 +218,7 @@ export const SKINS: SkinDef[] = [
     id: "classic",
     name: "Classique",
     gems: 0,
-    gradient:
-      "radial-gradient(circle at 32% 26%, rgba(255,255,255,0.98) 0%, rgba(186,230,253,0.92) 30%, rgba(129,140,248,0.55) 68%, rgba(167,139,250,0.5) 100%)",
+    gradient: classicBubbleGradient,
     border: "border-sky-200/80",
   },
   {
