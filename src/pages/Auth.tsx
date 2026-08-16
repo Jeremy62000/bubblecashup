@@ -14,6 +14,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 
+import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
@@ -110,22 +111,34 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   return (
     <div
-      className="min-h-screen flex flex-col overflow-hidden relative"
+      className="min-h-screen flex flex-col overflow-hidden relative text-white"
       style={{
         background:
-          "radial-gradient(120% 80% at 50% -10%, #dbeafe 0%, #ede9fe 45%, #fae8ff 100%)",
+          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
       }}
     >
-      {/* decorative floating bubbles */}
-      <span aria-hidden className="pointer-events-none absolute left-[8%] top-[16%] h-16 w-16 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
-      <span aria-hidden className="pointer-events-none absolute right-[10%] top-[24%] h-10 w-10 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
-      <span aria-hidden className="pointer-events-none absolute bottom-[14%] left-[14%] h-12 w-12 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
-      <span aria-hidden className="pointer-events-none absolute bottom-[10%] right-[16%] h-20 w-20 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
+      {/* decorative glowing bubbles */}
+      <span aria-hidden className="pointer-events-none absolute left-[8%] top-[16%] h-16 w-16 rounded-full border border-white/15 bg-white/[0.06] blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute right-[10%] top-[24%] h-10 w-10 rounded-full border border-white/15 bg-white/[0.06] blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute bottom-[14%] left-[14%] h-12 w-12 rounded-full border border-white/15 bg-white/[0.06] blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute bottom-[10%] right-[16%] h-20 w-20 rounded-full border border-white/15 bg-white/[0.06] blur-[1px]" />
+      <motion.div
+        aria-hidden
+        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
+        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-violet-500/25 blur-3xl"
+      />
+      <motion.div
+        aria-hidden
+        animate={{ x: [0, -36, 22, 0], y: [0, 28, -18, 0] }}
+        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-fuchsia-500/20 blur-3xl"
+      />
 
       {/* Auth Content */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-4">
         <div className="flex items-center justify-center h-full flex-col">
-        <Card className="min-w-[350px] max-w-[400px] pb-0 border-white/70 bg-white/70 shadow-xl shadow-indigo-900/10 backdrop-blur-2xl rounded-3xl">
+        <Card className="min-w-[350px] max-w-[400px] pb-0 border-white/15 bg-[#291157]/70 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-2xl rounded-3xl">
           {step === "signIn" ? (
             <>
               <CardHeader className="text-center">
@@ -133,7 +146,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 type="button"
                 aria-label="Retour à l'accueil"
                 onClick={() => navigate("/")}
-                className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-300 via-indigo-300 to-fuchsia-300 shadow-md shadow-indigo-300/50 transition hover:scale-105 active:scale-95"
+                className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-sky-400/90 via-violet-500/90 to-fuchsia-500/90 shadow-[0_0_30px_rgba(139,92,246,0.6)] transition hover:scale-105 active:scale-95"
               >
                 <span aria-hidden className="absolute ml-3 mt-3 h-5 w-9 -rotate-[24deg] rounded-full bg-white/80 blur-[2px]" />
               </button>
@@ -180,7 +193,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         <span className="w-full border-t" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white/60 px-2 text-muted-foreground">
+                        <span className="bg-[#2b135c] px-2 text-muted-foreground">
                           Ou
                         </span>
                       </div>
@@ -284,7 +297,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </>
           )}
 
-          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-white/50 border-t border-white/60 rounded-b-3xl">
+          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-white/[0.05] border-t border-white/10 rounded-b-3xl">
             Secured by{" "}
             <a
               href="https://freebuff.com"

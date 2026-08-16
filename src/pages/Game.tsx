@@ -15,7 +15,7 @@ import * as engine from "@/lib/game-engine";
 import type { BubbleKind } from "@/lib/game-engine";
 import { skinById, TEMP_BOOSTERS, type TempBoosterId } from "@/lib/shop";
 
-// --- special bubble skins (golden / rainbow keep their own look) ------------
+// --- special bubble badges (golden / rainbow keep their own look) -----------
 const SPECIAL_STYLES: Record<
   Exclude<BubbleKind, "normal">,
   { label: string; background: string; accent: string; shadow: string; chip: string }
@@ -23,18 +23,18 @@ const SPECIAL_STYLES: Record<
   golden: {
     label: "Bulle d'or",
     background:
-      "radial-gradient(circle at 32% 26%, rgba(255,255,255,0.98) 0%, rgba(253,230,138,0.95) 32%, rgba(251,191,36,0.75) 68%, rgba(217,119,6,0.55) 100%)",
-    accent: "border-amber-200/90",
-    shadow: "0 18px 55px -10px rgba(245,158,11,0.65), inset 0 -12px 28px rgba(255,255,255,0.45)",
-    chip: "border-amber-300/80 bg-amber-100/70 text-amber-900",
+      "radial-gradient(circle at 32% 26%, rgba(255,255,255,0.98) 0%, rgba(253,230,138,0.95) 32%, rgba(251,191,36,0.8) 68%, rgba(217,119,6,0.6) 100%)",
+    accent: "border-amber-200/60",
+    shadow: "0 18px 55px -10px rgba(251,191,36,0.5), inset 0 -12px 28px rgba(255,255,255,0.45)",
+    chip: "border-amber-300/40 bg-amber-400/15 text-amber-200",
   },
   rainbow: {
     label: "Bulle arc-en-ciel",
     background:
       "conic-gradient(from 200deg, #f471b5, #a78bfa, #60a5fa, #34d399, #fbbf24, #fb7185, #f471b5)",
-    accent: "border-fuchsia-200/80",
-    shadow: "0 18px 50px -8px rgba(217,70,239,0.4), inset 0 -12px 28px rgba(255,255,255,0.4)",
-    chip: "border-fuchsia-200/80 bg-fuchsia-100/70 text-fuchsia-900",
+    accent: "border-fuchsia-200/60",
+    shadow: "0 18px 50px -8px rgba(217,70,239,0.45), inset 0 -12px 28px rgba(255,255,255,0.4)",
+    chip: "border-fuchsia-300/40 bg-fuchsia-400/15 text-fuchsia-200",
   },
 };
 
@@ -60,10 +60,10 @@ function HeaderStat({
     <span className="flex items-center gap-2 px-3.5 py-2">
       {icon}
       <span className="leading-tight">
-        <span className="block text-[13px] font-bold text-slate-800 tabular-nums">
+        <span className="block text-[13px] font-bold text-white tabular-nums">
           {value}
         </span>
-        <span className="block text-[8px] font-semibold uppercase tracking-widest text-slate-400">
+        <span className="block text-[8px] font-semibold uppercase tracking-widest text-violet-300/60">
           {label}
         </span>
       </span>
@@ -77,7 +77,7 @@ function EffectChip({ children }: { children: ReactNode }) {
       initial={{ scale: 0.6, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.8, opacity: 0 }}
-      className="flex items-center gap-1 rounded-full border border-white/70 bg-white/70 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 shadow-sm backdrop-blur-md"
+      className="flex items-center gap-1 rounded-full border border-white/20 bg-[#2c1260]/70 px-2.5 py-0.5 text-[11px] font-bold text-violet-100 shadow-lg backdrop-blur-md"
     >
       {children}
     </motion.span>
@@ -107,8 +107,8 @@ export default function Game() {
           background: skin.gradient,
           accent: skin.border,
           shadow:
-            "0 18px 60px -12px rgba(79,70,229,0.5), inset 0 -14px 30px rgba(255,255,255,0.35)",
-          chip: "border-white/70 bg-white/60 text-slate-700",
+            "0 18px 60px -12px rgba(56,189,248,0.4), inset 0 -14px 30px rgba(255,255,255,0.35)",
+          chip: "border-white/15 bg-white/10 text-white",
         }
       : SPECIAL_STYLES[kind];
   const multiplier = engine.comboMultiplierFor(comboStacks);
@@ -139,7 +139,6 @@ export default function Game() {
       if (g.status === "inflating") {
         const speedMult = 1 + 0.1 * g.save.upgrades.inflate;
         const target = engine.sizeForElapsed(g.getElapsed(), speedMult);
-        // fast snap when shrinking (fresh bubble), smooth lerp when growing
         const alpha =
           target < sizeRef.current ? Math.min(1, dt / 50) : Math.min(1, dt / 120);
         sizeRef.current += (target - sizeRef.current) * alpha;
@@ -163,7 +162,7 @@ export default function Game() {
           initial={{ y: 0 }}
           animate={{ y: [0, -18, 0] }}
           transition={{ duration: 5 + i, repeat: Infinity, ease: "easeInOut", delay: b.delay }}
-          className="pointer-events-none absolute rounded-full border border-white/60 bg-white/25 backdrop-blur-sm"
+          className="pointer-events-none absolute rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-sm"
           style={{ left: b.left, top: b.top, width: b.size, height: b.size }}
         />
       )),
@@ -177,26 +176,32 @@ export default function Game() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="relative flex min-h-dvh flex-col overflow-hidden text-slate-800"
+      className="relative flex min-h-dvh flex-col overflow-hidden text-white"
       style={{
         background:
-          "radial-gradient(130% 90% at 50% -10%, #e0f2fe 0%, #ede9fe 48%, #fce7f3 100%)",
+          "radial-gradient(130% 90% at 50% -12%, #4c1d95 0%, #2e1065 44%, #19063a 100%)",
       }}
     >
       {decor}
 
-      {/* slow drifting light blobs */}
+      {/* drifting neon glows */}
       <motion.div
         aria-hidden
         animate={{ x: [0, 46, -18, 0], y: [0, -34, 18, 0] }}
         transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-sky-300/25 blur-3xl"
+        className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-violet-500/25 blur-3xl"
       />
       <motion.div
         aria-hidden
         animate={{ x: [0, -40, 24, 0], y: [0, 30, -22, 0] }}
         transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-fuchsia-300/25 blur-3xl"
+        className="pointer-events-none absolute -right-24 bottom-10 h-96 w-96 rounded-full bg-fuchsia-500/20 blur-3xl"
+      />
+      <motion.div
+        aria-hidden
+        animate={{ x: [0, 30, -20, 0], y: [0, -24, 16, 0] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute right-10 top-12 h-40 w-40 rounded-full bg-cyan-400/15 blur-3xl"
       />
 
       {/* red explosion flash */}
@@ -207,7 +212,7 @@ export default function Game() {
             initial={{ opacity: 0.65 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 0.55 }}
-            className="pointer-events-none absolute inset-0 z-30 bg-red-500/70"
+            className="pointer-events-none absolute inset-0 z-30 bg-red-500/80"
           />
         )}
       </AnimatePresence>
@@ -216,19 +221,19 @@ export default function Game() {
 
       {/* ---------- header (unified glass bar) ---------- */}
       <header className="relative z-10 mx-auto flex w-full max-w-md items-center justify-between gap-2 px-4 pt-4">
-        <div className="flex items-center divide-x divide-indigo-200/60 rounded-3xl border border-white/70 bg-white/60 shadow-lg shadow-indigo-900/5 backdrop-blur-xl">
+        <div className="flex items-center divide-x divide-white/10 rounded-3xl border border-white/15 bg-[#251052]/55 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
           <HeaderStat
-            icon={<Coins className="h-4 w-4 text-amber-500" />}
+            icon={<Coins className="h-4 w-4 text-amber-400" />}
             value={engine.formatCoins(save.coins)}
             label="pièces"
           />
           <HeaderStat
-            icon={<Gem className="h-4 w-4 text-fuchsia-500" />}
+            icon={<Gem className="h-4 w-4 text-fuchsia-400" />}
             value={engine.formatCoins(save.gems)}
             label="cristaux"
           />
           <HeaderStat
-            icon={<Trophy className="h-4 w-4 text-indigo-500" />}
+            icon={<Trophy className="h-4 w-4 text-violet-300" />}
             value={engine.formatCoins(save.bestBubble)}
             label="record"
           />
@@ -237,7 +242,7 @@ export default function Game() {
           type="button"
           onClick={game.toggleMute}
           aria-label={save.muted ? "Activer le son" : "Couper le son"}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-slate-500 shadow-md backdrop-blur-xl transition hover:bg-white/80 active:scale-95"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-[#251052]/55 text-violet-200 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl transition hover:bg-white/10 active:scale-95"
         >
           {save.muted ? (
             <VolumeX className="h-4 w-4" />
@@ -258,7 +263,7 @@ export default function Game() {
                 initial={{ scale: 0.5, opacity: 0, y: 8 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.8, opacity: 0 }}
-                className="flex items-center gap-1.5 rounded-full border border-amber-300/70 bg-amber-100/70 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm backdrop-blur-md"
+                className="flex items-center gap-1.5 rounded-full border border-amber-300/40 bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-200 shadow-[0_0_24px_rgba(251,191,36,0.25)] backdrop-blur-md"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 Combo ×{multiplier.toFixed(1)} au prochain encaissement
@@ -307,7 +312,7 @@ export default function Game() {
                   animate={{ opacity: 1, y: -46, scale: 1.1 }}
                   exit={{ opacity: 0, y: -70, scale: 1 }}
                   transition={{ duration: 0.9, ease: "easeOut" }}
-                  className="absolute top-4 z-20 rounded-full border border-amber-300/70 bg-white/80 px-4 py-1.5 text-lg font-extrabold text-amber-600 shadow-lg backdrop-blur-md"
+                  className="absolute top-4 z-20 rounded-full border border-amber-300/40 bg-[#291157]/90 px-4 py-1.5 text-lg font-extrabold text-amber-300 shadow-[0_8px_30px_rgba(251,191,36,0.3)] backdrop-blur-md"
                 >
                   {lastGain.gems > 0
                     ? `+${lastGain.gems} 💎`
@@ -322,19 +327,19 @@ export default function Game() {
               className="relative flex items-center justify-center"
               style={{ width: sizeRef.current, height: sizeRef.current }}
             >
-              {/* soft aura glow */}
+              {/* soft neon aura */}
               <motion.div
                 aria-hidden
-                animate={{ opacity: [0.35, 0.7, 0.35], scale: [1, 1.06, 1] }}
+                animate={{ opacity: [0.4, 0.85, 0.4], scale: [1, 1.08, 1] }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                className="pointer-events-none absolute -inset-4 rounded-full blur-2xl"
+                className="pointer-events-none absolute -inset-5 rounded-full blur-2xl"
                 style={{
                   background:
                     kind === "golden"
                       ? "rgba(251,191,36,0.55)"
                       : kind === "rainbow"
-                        ? "rgba(217,70,239,0.45)"
-                        : "rgba(99,102,241,0.4)",
+                        ? "rgba(232,121,249,0.5)"
+                        : "rgba(34,211,238,0.45)",
                 }}
               />
 
@@ -383,7 +388,7 @@ export default function Game() {
                       style={{
                         opacity: Math.max(0, Math.min(1, (risk - 35) / 55)),
                         background:
-                          "radial-gradient(circle at 35% 30%, rgba(251,113,133,0) 0%, rgba(244,63,94,0.22) 55%, rgba(190,18,60,0.32) 100%)",
+                          "radial-gradient(circle at 35% 30%, rgba(251,113,133,0) 0%, rgba(244,63,94,0.3) 55%, rgba(190,18,60,0.45) 100%)",
                       }}
                     />
                     {kind === "golden" && (
@@ -403,18 +408,18 @@ export default function Game() {
           <div className="flex items-baseline gap-2">
             <motion.span
               key={multiplier}
-              initial={{ scale: 1.2, color: "#b45309" }}
-              animate={{ scale: 1, color: "#0f172a" }}
+              initial={{ scale: 1.2, color: "#fbbf24" }}
+              animate={{ scale: 1, color: "#ffffff" }}
               className="text-4xl font-black tabular-nums"
             >
               {engine.formatLiveValue(value)}
             </motion.span>
-            <span className="text-sm font-bold uppercase tracking-wide text-slate-500">
+            <span className="text-sm font-bold uppercase tracking-wide text-violet-300/70">
               {kind === "rainbow" ? "cristaux ?" : "pièces"}
             </span>
           </div>
           {kind !== "rainbow" && (
-            <span className="rounded-full border border-white/60 bg-white/50 px-2.5 py-0.5 text-[10px] font-bold text-slate-500 backdrop-blur-sm">
+            <span className="rounded-full border border-white/15 bg-[#251052]/50 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300/90 backdrop-blur-sm">
               ⚡ +{ratePerSec.toFixed(1)}/s
             </span>
           )}
@@ -422,31 +427,25 @@ export default function Game() {
 
         {/* risk gauge */}
         <div className="w-64 max-w-full">
-          <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="mb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-violet-300/70">
             <span>Risque</span>
             <motion.span
               animate={risk >= 75 ? { scale: [1, 1.18, 1] } : { scale: 1 }}
               transition={{ duration: 0.6, repeat: risk >= 75 ? Infinity : 0 }}
-              className={risk >= 70 ? "text-rose-500" : "text-slate-600"}
+              className={risk >= 70 ? "text-rose-400" : "text-cyan-300"}
             >
               {Math.round(risk)}%
             </motion.span>
           </div>
-          <div className="relative h-4 overflow-hidden rounded-full border border-white/70 bg-white/50 p-[3px] shadow-inner backdrop-blur-md">
+          <div className="relative h-4 overflow-hidden rounded-full border border-white/15 bg-white/10 p-[3px] shadow-[inset_0_2px_8px_rgba(0,0,0,0.45)] backdrop-blur-md">
             {/* ticks */}
-            <span aria-hidden className="absolute left-1/4 top-0 h-full w-px bg-slate-300/50" />
-            <span aria-hidden className="absolute left-2/4 top-0 h-full w-px bg-slate-300/50" />
-            <span aria-hidden className="absolute left-3/4 top-0 h-full w-px bg-slate-300/50" />
+            <span aria-hidden className="absolute left-1/4 top-0 h-full w-px bg-white/15" />
+            <span aria-hidden className="absolute left-2/4 top-0 h-full w-px bg-white/15" />
+            <span aria-hidden className="absolute left-3/4 top-0 h-full w-px bg-white/15" />
             <motion.div
               animate={{ width: `${risk}%` }}
               transition={{ duration: 0.22, ease: "linear" }}
-              className={`relative h-full rounded-full ${
-                risk < 50
-                  ? "bg-gradient-to-r from-sky-400 to-indigo-400"
-                  : risk < 75
-                    ? "bg-gradient-to-r from-indigo-400 to-violet-400"
-                    : "bg-gradient-to-r from-violet-400 to-rose-400"
-              }`}
+              className="relative h-full rounded-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500"
             >
               {/* moving glint at the tip of the gauge */}
               <span
@@ -458,7 +457,7 @@ export default function Game() {
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-violet-300/60">
           {shieldLeft > 0
             ? "🛡️ Ta bulle est protégée !"
             : risk >= 70
@@ -484,12 +483,12 @@ export default function Game() {
                 disabled={blocked}
                 onClick={() => game.activateBooster(b.id as TempBoosterId)}
                 title={b.name}
-                className={`relative flex shrink-0 items-center gap-1 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-sm shadow-sm backdrop-blur-md transition-colors ${
-                  blocked ? "cursor-not-allowed opacity-40" : "hover:bg-white/95"
+                className={`relative flex shrink-0 items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm shadow-lg backdrop-blur-md transition-colors ${
+                  blocked ? "cursor-not-allowed opacity-40" : "hover:bg-white/20"
                 }`}
               >
                 <span>{b.emoji}</span>
-                <span className="rounded-full bg-indigo-100 px-1.5 text-[10px] font-bold text-indigo-600">
+                <span className="rounded-full bg-fuchsia-500/25 px-1.5 text-[10px] font-bold text-fuchsia-200">
                   {count}
                 </span>
               </motion.button>
@@ -505,17 +504,19 @@ export default function Game() {
           onClick={game.cashOut}
           whileTap={isBusy ? undefined : { scale: 0.95 }}
           disabled={isBusy}
-          className={`group relative w-full overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 py-4 text-xl font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/30 transition-colors ${
-            isBusy ? "cursor-not-allowed opacity-40" : "hover:shadow-indigo-500/50"
+          className={`group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-4 text-xl font-black uppercase tracking-[0.18em] text-[#22103f] shadow-[0_12px_44px_rgba(244,114,182,0.45)] transition-all ${
+            isBusy
+              ? "cursor-not-allowed opacity-40"
+              : "hover:shadow-[0_16px_54px_rgba(244,114,182,0.6)]"
           }`}
         >
           {/* sweeping shine */}
           <span
             aria-hidden
-            className="pointer-events-none absolute left-[-40%] top-0 h-full w-[35%] -skew-x-12 bg-white/25 blur-md transition-transform duration-700 ease-out group-hover:translate-x-[430%]"
+            className="pointer-events-none absolute left-[-40%] top-0 h-full w-[35%] -skew-x-12 bg-white/30 blur-md transition-transform duration-700 ease-out group-hover:translate-x-[430%]"
           />
-          <span className="relative">🫧 Encaisser</span>
-          <span className="pointer-events-none absolute inset-0 rounded-3xl border border-white/40" />
+          <span className="relative drop-shadow-sm">🫧 Encaisser</span>
+          <span className="pointer-events-none absolute inset-0 rounded-full border border-white/30" />
         </motion.button>
       </footer>
 
@@ -529,19 +530,19 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
             transition={{ duration: 0.35 }}
-            className="absolute inset-x-4 bottom-32 z-50 mx-auto max-w-md rounded-3xl border border-white/70 bg-white/85 p-4 shadow-2xl shadow-indigo-900/15 backdrop-blur-2xl"
+            className="absolute inset-x-4 bottom-32 z-50 mx-auto max-w-md rounded-3xl border border-white/15 bg-[#291157]/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-2xl"
           >
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm font-bold text-white">
               Bienvenue ! 🎉 Pendant tes {offlineClaim.minutes} min d'absence,
               tes machines ont fabriqué&nbsp;:
             </p>
-            <p className="mt-1 text-2xl font-black text-amber-500">
+            <p className="mt-1 text-2xl font-black text-amber-400">
               {engine.formatCoins(offlineClaim.coins)} 🪙
             </p>
             <button
               type="button"
               onClick={game.claimOffline}
-              className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-3 text-base font-black uppercase tracking-widest text-white shadow-lg active:scale-95"
+              className="mt-3 w-full rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 py-3 text-base font-black uppercase tracking-widest text-[#22103f] shadow-lg active:scale-95"
             >
               Récupérer
             </button>
