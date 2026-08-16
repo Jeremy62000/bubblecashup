@@ -1,5 +1,6 @@
-import { ArrowLeft, Coins, Gem, Lock, Sparkles } from "lucide-react";
-import { Link } from "react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import { Coins, Gem, Lock, Sparkles } from "lucide-react";
+import { BottomNav } from "@/components/bottom-nav";
 import { useBubbleGame } from "@/hooks/use-bubble-game";
 import * as engine from "@/lib/game-engine";
 import {
@@ -22,33 +23,38 @@ function GlassRow({ children }: { children: React.ReactNode }) {
 
 export default function Shop() {
   const game = useBubbleGame();
-  const { save } = game;
+  const { save, offlineClaim } = game;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
       className="relative min-h-dvh overflow-hidden text-slate-800"
       style={{
         background: "radial-gradient(120% 80% at 50% -10%, #dbeafe 0%, #ede9fe 45%, #fae8ff 100%)",
       }}
     >
-      <span aria-hidden className="pointer-events-none absolute left-[6%] top-[12%] h-14 w-14 rounded-full border border-white/60 bg-white/30" />
-      <span aria-hidden className="pointer-events-none absolute right-[8%] top-[20%] h-9 w-9 rounded-full border border-white/60 bg-white/30" />
-      <span aria-hidden className="pointer-events-none absolute bottom-[10%] left-[10%] h-10 w-10 rounded-full border border-white/60 bg-white/30" />
+      <motion.span
+        aria-hidden
+        animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
+        transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-sky-300/20 blur-3xl"
+      />
+      <motion.span
+        aria-hidden
+        animate={{ x: [0, -36, 22, 0], y: [0, 28, -18, 0] }}
+        transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute -right-24 bottom-1/4 h-80 w-80 rounded-full bg-fuchsia-300/20 blur-3xl"
+      />
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 py-5">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 pb-28 pt-5">
         {/* ---------- header ---------- */}
-        <header className="flex items-center justify-between gap-2">
-          <Link
-            to="/play"
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/70 bg-white/60 text-indigo-500 shadow-sm backdrop-blur-xl transition hover:bg-white/90 active:scale-95"
-            aria-label="Retour au jeu"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <h1 className="text-xl font-black tracking-tight">
+        <header className="flex flex-col gap-3">
+          <h1 className="text-center text-2xl font-black tracking-tight">
             Boutique<span className="text-indigo-500">.</span>
           </h1>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-center gap-2">
             <span className="flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-xs font-bold text-amber-700 shadow-sm backdrop-blur-md">
               <Coins className="h-3.5 w-3.5" />
               {engine.formatCoins(save.coins)}
@@ -59,6 +65,8 @@ export default function Shop() {
             </span>
           </div>
         </header>
+
+        <BottomNav />
 
         {/* ---------- prestige teaser ---------- */}
         <div className="flex items-center gap-3 rounded-3xl border border-dashed border-indigo-300/70 bg-indigo-50/50 px-4 py-3 backdrop-blur-md">
@@ -273,7 +281,35 @@ export default function Shop() {
             </p>
           </TabsContent>
         </Tabs>
+
+        {/* ---------- offline earnings ---------- */}
+        <AnimatePresence>
+          {offlineClaim && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.35 }}
+              className="absolute inset-x-4 bottom-32 z-50 mx-auto max-w-md rounded-3xl border border-white/70 bg-white/85 p-4 shadow-2xl shadow-indigo-900/15 backdrop-blur-2xl"
+            >
+              <p className="text-sm font-bold text-slate-800">
+                Bienvenue ! 🎉 Pendant tes {offlineClaim.minutes} min d'absence,
+                tes machines ont fabriqué&nbsp;:
+              </p>
+              <p className="mt-1 text-2xl font-black text-amber-500">
+                {engine.formatCoins(offlineClaim.coins)} 🪙
+              </p>
+              <button
+                type="button"
+                onClick={game.claimOffline}
+                className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 py-3 text-base font-black uppercase tracking-widest text-white shadow-lg active:scale-95"
+              >
+                Récupérer
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

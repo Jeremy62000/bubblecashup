@@ -579,5 +579,7 @@ export function useBubbleGame() {
     buySkin,
     buyPassive,
     claimOffline,
+    /** Current elapsed seconds of the run (cheap, safe for per-frame reads). */
+    getElapsed: effectiveElapsed,
   };
 }
