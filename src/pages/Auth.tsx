@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/hooks/use-auth";
-import logo from "@/assets/logo.svg";
 import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -110,29 +109,37 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col overflow-hidden relative"
+      style={{
+        background:
+          "radial-gradient(120% 80% at 50% -10%, #dbeafe 0%, #ede9fe 45%, #fae8ff 100%)",
+      }}
+    >
+      {/* decorative floating bubbles */}
+      <span aria-hidden className="pointer-events-none absolute left-[8%] top-[16%] h-16 w-16 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute right-[10%] top-[24%] h-10 w-10 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute bottom-[14%] left-[14%] h-12 w-12 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
+      <span aria-hidden className="pointer-events-none absolute bottom-[10%] right-[16%] h-20 w-20 rounded-full border border-white/60 bg-white/30 blur-[1px]" />
 
-      
       {/* Auth Content */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="relative z-10 flex-1 flex items-center justify-center px-4">
         <div className="flex items-center justify-center h-full flex-col">
-        <Card className="min-w-[350px] pb-0 border shadow-md">
+        <Card className="min-w-[350px] max-w-[400px] pb-0 border-white/70 bg-white/70 shadow-xl shadow-indigo-900/10 backdrop-blur-2xl rounded-3xl">
           {step === "signIn" ? (
             <>
               <CardHeader className="text-center">
-              <div className="flex justify-center">
-                    <img
-                      src={logo}
-                      alt="Lock Icon"
-                      width={64}
-                      height={64}
-                      className="rounded-lg mb-4 mt-4 cursor-pointer"
-                      onClick={() => navigate("/")}
-                    />
-                  </div>
-                <CardTitle className="text-xl">Get Started</CardTitle>
+              <button
+                type="button"
+                aria-label="Retour à l'accueil"
+                onClick={() => navigate("/")}
+                className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-300 via-indigo-300 to-fuchsia-300 shadow-md shadow-indigo-300/50 transition hover:scale-105 active:scale-95"
+              >
+                <span aria-hidden className="absolute ml-3 mt-3 h-5 w-9 -rotate-[24deg] rounded-full bg-white/80 blur-[2px]" />
+              </button>
+                <CardTitle className="text-xl">Bienvenue !</CardTitle>
                 <CardDescription>
-                  Enter your email to log in or sign up
+                  Connecte-toi pour faire gonfler ta bulle
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleEmailSubmit}>
@@ -173,8 +180,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         <span className="w-full border-t" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          Or
+                        <span className="bg-white/60 px-2 text-muted-foreground">
+                          Ou
                         </span>
                       </div>
                     </div>
@@ -187,7 +194,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       disabled={isLoading}
                     >
                       <UserX className="mr-2 h-4 w-4" />
-                      Continue as Guest
+                      Jouer en invité
                     </Button>
                   </div>
                 </CardContent>
@@ -196,9 +203,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           ) : (
             <>
               <CardHeader className="text-center mt-4">
-                <CardTitle>Check your email</CardTitle>
+                <CardTitle>Vérifie ton e-mail</CardTitle>
                 <CardDescription>
-                  We've sent a code to {step.email}
+                  Nous t'avons envoyé un code à {step.email}
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleOtpSubmit}>
@@ -235,13 +242,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground text-center mt-4">
-                    Didn't receive a code?{" "}
+                    Pas reçu le code ?{" "}
                     <Button
                       variant="link"
                       className="p-0 h-auto"
                       onClick={() => setStep("signIn")}
                     >
-                      Try again
+                      Réessayer
                     </Button>
                   </p>
                 </CardContent>
@@ -254,11 +261,11 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
+                        Vérification…
                       </>
                     ) : (
                       <>
-                        Verify code
+                        Valider le code
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}
@@ -270,14 +277,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     disabled={isLoading}
                     className="w-full"
                   >
-                    Use different email
+                    Utiliser un autre e-mail
                   </Button>
                 </CardFooter>
               </form>
             </>
           )}
 
-          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
+          <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-white/50 border-t border-white/60 rounded-b-3xl">
             Secured by{" "}
             <a
               href="https://freebuff.com"
