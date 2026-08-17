@@ -121,7 +121,7 @@ function loadSave(): SaveData {
       skins: Array.isArray(parsed.skins) ? parsed.skins : ["classic"],
       daily:
         parsed.daily && parsed.daily.date === todayKey()
-          ? parsed.daily
+          ? { ...newDailyState(todayKey(), undefined), ...parsed.daily }
           : newDailyState(todayKey(), parsed.daily),
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : [],
       lifetimeCoins:

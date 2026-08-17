@@ -4,6 +4,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { InstrumentationProvider } from "@/instrumentation.tsx";
 import { AdminBootstrap } from "@/components/admin-bootstrap";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { SettingsApplier } from "@/components/settings-applier";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -156,7 +157,9 @@ createRoot(document.getElementById("root")!).render(
           <RouteSyncer />
           <SettingsApplier />
           <AdminBootstrap />
-          <AppRoutes />
+          <ErrorBoundary>
+            <AppRoutes />
+          </ErrorBoundary>
         </BrowserRouter>
         <Toaster theme="dark" position="top-center" />
       </ConvexAuthProvider>
